@@ -7,6 +7,12 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
         <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="manifest" href="manifest.json">
+        <meta name="theme-color" content="#2c3e50"/>
+        <link rel="apple-touch-icon" href="images/icon-192.png">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <meta name="apple-mobile-web-app-title" content="SIG Senegal">
         <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
         <link rel="stylesheet" href="css/L.Control.Locate.min.css">
         <link rel="stylesheet" href="css/qgis2web.css">
@@ -32,6 +38,7 @@
             padding: 0;
             width: 100%;
             display: flex;
+            justify-content: space-between;
             align-items: center;
             height: 60px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -42,7 +49,7 @@
         .nav-menu {
             display: flex;
             list-style: none;
-            margin-inline-start: 30px;
+            margin: 0;
             gap: 0;
         }
         
@@ -170,18 +177,63 @@
         .leaflet-control-search {
             z-index: 999;
         }
+        .sidebar-toggle-btn {
+            display: none;
+            color: white;
+            font-size: 24px;
+            padding: 0 15px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .nav-left, .nav-right {
+            display: flex;
+            align-items: center;
+        }
+        @media (max-width: 850px) {
+            .sidebar-left, .sidebar-right {
+                position: absolute;
+                top: 60px;
+                height: calc(100vh - 60px);
+                z-index: 1001;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+                display: block;
+            }
+            .sidebar-right {
+                left: auto;
+                right: 0;
+                transform: translateX(100%);
+            }
+            .sidebar-left.open, .sidebar-right.open {
+                transform: translateX(0);
+            }
+            .sidebar-toggle-btn {
+                display: block;
+            }
+            .nav-menu a {
+                padding: 20px 15px;
+                font-size: 14px;
+            }
+        }
         </style>
         <title>Cartographie web des limites administratives du Senegal</title>
     </head>
     <body>
-        <!-- Navigation Bar -->
         <nav id="navbar">
-            <ul class="nav-menu">
-                <li><a href="#accueil">Acceuil</a></li>
-                <li><a href="#apropos">À propos</a></li>
-                <li><a href="#catalogue">Catalogue</a></li>
-                <li><a href="#outils">Outils</a></li>
-            </ul>
+            <div class="nav-left">
+                <a href="#" id="toggle-left-sidebar" class="sidebar-toggle-btn">&#9776;</a>
+                <ul class="nav-menu">
+                    <li><a href="#accueil">Acceuil</a></li>
+                    <li><a href="#apropos">À propos</a></li>
+                    <li><a href="#catalogue">Catalogue</a></li>
+                    <li><a href="#outils">Outils</a></li>
+                    <li><a href="#" id="install-button" style="display: none;">Installer</a></li>
+                </ul>
+            </div>
+            <div class="nav-right">
+                <a href="#" id="toggle-right-sidebar" class="sidebar-toggle-btn">&#9776;</a>
+            </div>
         </nav>
         
         <!-- Main Container -->
@@ -1354,6 +1406,65 @@
                 map.addLayer(layer_Terrain);
             }
         });
+
+        // Logique pour les barres latérales
+        const toggleLeft = document.getElementById('toggle-left-sidebar');
+        const toggleRight = document.getElementById('toggle-right-sidebar');
+        const sidebarLeft = document.querySelector('.sidebar-left');
+        const sidebarRight = document.querySelector('.sidebar-right');
+
+        if (toggleLeft && sidebarLeft) {
+            toggleLeft.addEventListener('click', function(e) {
+                e.preventDefault();
+                sidebarLeft.classList.toggle('open');
+                if (sidebarRight.classList.contains('open')) {
+                    sidebarRight.classList.remove('open');
+                }
+            });
+        }
+
+        if (toggleRight && sidebarRight) {
+            toggleRight.addEventListener('click', function(e) {
+                e.preventDefault();
+                sidebarRight.classList.toggle('open');
+                if (sidebarLeft.classList.contains('open')) {
+                    sidebarLeft.classList.remove('open');
+                }
+            });
+        }
+
+        map.on('click', function() {
+            if (sidebarLeft.classList.contains('open')) sidebarLeft.classList.remove('open');
+            if (sidebarRight.classList.contains('open')) sidebarRight.classList.remove('open');
+        });
+
+        // Logique PWA et bouton d'installation
+        let deferredPrompt;
+        const installButton = document.getElementById('install-button');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (installButton) installButton.style.display = 'block';
+        });
+
+        if (installButton) {
+            installButton.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt = null;
+                    installButton.style.display = 'none';
+                }
+            });
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sigsenegal/sw.js')
+                    .then(reg => console.log('Service worker enregistré.', reg))
+                    .catch(err => console.log('Erreur d\'enregistrement du Service worker: ', err));
+            });
+        }
         </script>
     </body>
 </html>
